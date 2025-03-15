@@ -67,7 +67,7 @@ install_docker() {
 
 # Function to get public IP
 get_public_ip() {
-	curl -s -4 ipv4.icanhazip.com
+	curl -s -4 ifconfig.me
 }
 
 # Function to start node, configure it and return peer ID
