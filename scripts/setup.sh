@@ -190,6 +190,7 @@ ensure_jq
 import_evm_key
 
 PUBLIC_IP=$(get_public_ip)
+echo "Public IP: $PUBLIC_IP"
 PRIVATE_KEY=$(sudo cat $EVM_KEY_FILE | jq -r '.privateKey')
 ADDRESS=$(sudo cat $EVM_KEY_FILE | jq -r '.address')
 STORAGE="$(df -B1 / | awk 'NR==2 {print $4}')"
