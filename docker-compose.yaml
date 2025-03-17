@@ -2,11 +2,13 @@ services:
   node:
     container_name: node
     image: ipfs/kubo:latest
+    privileged: true
     ports:
       - "4001:4001" # IPFS swarm (TCP)
       - "4001:4001/udp" # IPFS swarm (UDP)
       - "127.0.0.1:5001:5001" # IPFS API
     volumes:
+      - ./scripts/rm-stale-lockfile.sh:/container-init.d/rm-stale-lockfile.sh:ro
       - node_data:/data/ipfs
       - node_export:/export
     environment:
