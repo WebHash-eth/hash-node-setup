@@ -73,7 +73,7 @@ get_public_ip() {
 # Function to start node, configure it and return peer ID
 start_node() {
 	local public_ip=$1
-	echo "Starting node..."
+	echo "Starting node with public IP: $public_ip..."
 
 	# Start the container
 	PRIVATE_KEY=$PRIVATE_KEY sudo -E docker compose up -d --build
@@ -147,8 +147,11 @@ ensure_jq() {
 }
 
 node_init() {
+	local address=$1
+	local public_ip=$2
+	local storage=$3
 	# Capture the JSON response from node-init.js
-	local response=$("$BUN_PATH" ./scripts/node-init.js "$1" "$2" "$3")
+	local response=$("$BUN_PATH" ./scripts/node-init.js "$address" "$public_ip" "$storage")
 	# Extract telemetry config from response and write to .env file
 	# NOTE: This env file is used in telegraf
 	{
@@ -156,7 +159,8 @@ node_init() {
 		echo "INFLUXDB_TOKEN=$(echo "$response" | jq -r '.telemetry.token')"
 		echo "INFLUXDB_ORG=$(echo "$response" | jq -r '.telemetry.org')"
 		echo "INFLUXDB_BUCKET=$(echo "$response" | jq -r '.telemetry.bucket')"
-	} >>.env
+		echo "ADDRESS=$address"
+	} >.env
 }
 
 register_node() {

@@ -28,7 +28,7 @@ const isLocal = process.env.NODE_ENV === "local";
 
 const url = isLocal
   ? "http://localhost:6001/node"
-  : "https://95fb-205-254-171-170.ngrok-free.app/node";
+  : "https://node.webhash.com/node";
 
 try {
   const response = await fetch(url, {
