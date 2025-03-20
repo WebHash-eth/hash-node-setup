@@ -63,6 +63,13 @@ install_docker() {
 	else
 		echo "Docker is already installed"
 	fi
+
+	export DOCKER_GID=$(getent group docker | cut -d: -f3)
+
+	if [ -z "$DOCKER_GID" ]; then
+		echo "Docker group not found. Unknown problem when installing docker."
+		exit 1
+	fi
 }
 
 # Function to get public IP
