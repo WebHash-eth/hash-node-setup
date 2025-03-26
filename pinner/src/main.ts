@@ -1,16 +1,22 @@
 import { CID } from "multiformats";
 import {
   Address,
+  createPublicClient,
+  createWalletClient,
   Hash,
   Hex,
   hexToBigInt,
   hexToNumber,
+  http,
   Log,
   parseEventLogs,
+  PublicClient,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import * as chains from "viem/chains";
 import config from "./config.js";
 import contentRegistryAbi from "./contracts/abi/contentRegistry.abi.js";
+import { ContentRegistryContract } from "./contracts/contentRegistry.js";
 import { pinContentToIpfs } from "./ipfs.js";
 import { WebSocketClient } from "./websocket.js";
 
@@ -38,6 +44,24 @@ type WebsocketEventsData =
       type: "contract_event";
       data: RawLog | RawLog[];
     };
+
+const account = privateKeyToAccount(config.PRIVATE_KEY);
+const publicClient = createPublicClient({
+  chain: chains[config.NETWORK],
+  transport: http(config.CHAIN_URL),
+}) as PublicClient;
+
+const walletClient = createWalletClient({
+  chain: chains[config.NETWORK],
+  transport: http(config.CHAIN_URL),
+  account,
+});
+
+const contentContract = new ContentRegistryContract({
+  contractAddress: config.CONTENT_REGISTRY_CONTRACT_ADDRESS,
+  publicClient,
+  walletClient,
+});
 
 function parseEvent(eventData: RawLog | RawLog[]) {
   let logs: Log[];
@@ -79,6 +103,9 @@ async function handleWsContractEvent(data: RawLog | RawLog[]) {
       console.log("Parsed CID:", cid.toString());
       const pinResult = await pinContentToIpfs(cid);
       console.log("Pinned content:", pinResult);
+
+      const tx = await contentContract.confirmPin(hexCid);
+      console.log("Confirmed pin:", tx.transactionHash);
     }
   }
 }
@@ -96,7 +123,6 @@ async function handleWsEvent(message: MessageEvent) {
 
 async function main() {
   console.log("Starting script...");
-  const account = privateKeyToAccount(config.PRIVATE_KEY);
 
   const url = new URL(`wss://${config.PRIMARY_NODE_HOST}/ws`);
   url.searchParams.set("address", account.address);
