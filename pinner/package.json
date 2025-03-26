@@ -1,5 +1,5 @@
 {
-  "name": "ipfs-sidecar-script",
+  "name": "webhash-node-pinner",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/main.js",

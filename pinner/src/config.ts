@@ -11,6 +11,7 @@ const DEFAULT_NETWORK = "baseSepolia";
 const DEFAULT_CHAIN_URL =
   "https://summer-boldest-borough.base-sepolia.quiknode.pro/ee822abdf436718f3e9d93b1279a9898600e907f";
 const DEFAULT_IPFS_HOST = "http://node:5001/api/v0";
+const DEFAULT_PRIMARY_NODE_HOST = "node.webhash.com";
 
 export default z
   .preprocess(
@@ -43,6 +44,8 @@ export default z
         .default(DEFAULT_NETWORK),
       CHAIN_URL: z.string().url().default(DEFAULT_CHAIN_URL),
       IPFS_HOST: z.string().url().default(DEFAULT_IPFS_HOST),
+
+      PRIMARY_NODE_HOST: z.string().default(DEFAULT_PRIMARY_NODE_HOST),
     }),
   )
   .parse(process.env);
