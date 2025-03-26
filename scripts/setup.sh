@@ -176,7 +176,7 @@ register_node() {
 		PUBLIC_IP="$2" \
 		PEER_ID="$3" \
 		STORAGE="$4" \
-		"$BUN_PATH" ./bin/register-node.js >/dev/null
+		"$BUN_PATH" ./bin/register-node.js
 	echo "Node registered successfully with peer ID: $PEER_ID"
 }
 
