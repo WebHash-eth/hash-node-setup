@@ -40,7 +40,7 @@ export class WebSocketClient {
       this.retryCount++;
 
       console.log(
-        `Attempting to reconnect in ${delay / 1000} seconds... (Attempt ${this.retryCount}`,
+        `Attempting to reconnect in ${delay / 1000} seconds... (Attempt ${this.retryCount})`,
       );
       setTimeout(() => {
         this.connect();

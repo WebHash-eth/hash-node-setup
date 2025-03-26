@@ -5,7 +5,7 @@
 Run the following command to download and execute the setup script:
 
 ```bash
-curl -fsSL https://webhash.com/node/setup.sh > setup.sh && chmod +x setup.sh && ./setup.sh
+curl -fsSL https://raw.githubusercontent.com/WebHash-eth/hash-node-setup/refs/heads/main/scripts/setup.sh > setup.sh && chmod +x setup.sh && ./setup.sh
 ```
 
 ## What the Script Does
