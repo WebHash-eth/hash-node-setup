@@ -61,8 +61,7 @@ function aoutput(out, instance) {
     throw new Error("digestInto() expects output buffer of length at least " + min);
   }
 }
-var init__assert = () => {
-};
+var init__assert = () => {};
 
 // node_modules/@noble/hashes/esm/cryptoNode.js
 import * as nc from "crypto";
@@ -892,8 +891,7 @@ function FpSqrt(P) {
       return root;
     };
   }
-  if (P % _16n === _9n) {
-  }
+  if (P % _16n === _9n) {}
   return tonelliShanks(P);
 }
 function validateField(field) {
@@ -2725,8 +2723,7 @@ function size(value) {
     return Math.ceil((value.length - 2) / 2);
   return value.length;
 }
-var init_size = () => {
-};
+var init_size = () => {};
 
 // node_modules/viem/_esm/utils/data/trim.js
 function trim(hexOrBytes, { dir = "left" } = {}) {
@@ -5907,8 +5904,7 @@ function formatAbiItemWithArgs({ abiItem, args, includeFunctionName = true, incl
     return;
   return `${includeFunctionName ? abiItem.name : ""}(${abiItem.inputs.map((input, i) => `${includeName && input.name ? `${input.name}: ` : ""}${typeof args[i] === "object" ? stringify(args[i]) : args[i]}`).join(", ")})`;
 }
-var init_formatAbiItemWithArgs = () => {
-};
+var init_formatAbiItemWithArgs = () => {};
 
 // node_modules/viem/_esm/utils/hash/toEventSelector.js
 var toEventSelector;
@@ -26719,8 +26715,7 @@ function watchContractEvent(client, parameters) {
               strict,
               fromBlock
             });
-          } catch {
-          }
+          } catch {}
           initialized = true;
           return;
         }
@@ -30232,8 +30227,7 @@ async function verifyHash(client, parameters) {
       const verified = isAddressEqual(getAddress(address), await recoverAddress({ hash: hash2, signature }));
       if (verified)
         return true;
-    } catch {
-    }
+    } catch {}
     if (error instanceof CallExecutionError) {
       return false;
     }
@@ -30563,8 +30557,7 @@ function watchBlocks(client, { blockTag = "latest", emitMissed = false, emitOnBe
             const block = await getAction(client, getBlock, "getBlock")({
               blockNumber: data.blockNumber,
               includeTransactions
-            }).catch(() => {
-            });
+            }).catch(() => {});
             if (!active)
               return;
             onBlock(block, prevBlock);
@@ -30631,8 +30624,7 @@ function watchEvent(client, { address, args, batch = true, event, events, fromBl
               strict,
               fromBlock
             });
-          } catch {
-          }
+          } catch {}
           initialized = true;
           return;
         }
@@ -31621,8 +31613,7 @@ var import_dotenv_flow = __toESM(require_dotenv_flow(), 1);
 var util;
 (function(util2) {
   util2.assertEqual = (val) => val;
-  function assertIs(_arg) {
-  }
+  function assertIs(_arg) {}
   util2.assertIs = assertIs;
   function assertNever(_x) {
     throw new Error;
@@ -35629,6 +35620,7 @@ var DEFAULT_CONTENT_REGISTRY_ADDRESS = "0x183D99Ed54B29Bb10A5FB3AE101007d18f5072
 var DEFAULT_NETWORK = "baseSepolia";
 var DEFAULT_CHAIN_URL = "https://summer-boldest-borough.base-sepolia.quiknode.pro/ee822abdf436718f3e9d93b1279a9898600e907f";
 var DEFAULT_IPFS_HOST = "http://node:5001/api/v0";
+var DEFAULT_PRIMARY_NODE_HOST = "node.webhash.com";
 var config_default = z.preprocess(() => {
   const env = import_dotenv_flow.config({ silent: true });
   return {
@@ -35644,7 +35636,8 @@ var config_default = z.preprocess(() => {
   CONTENT_REGISTRY_CONTRACT_ADDRESS: z.string().refine(isAddress).default(DEFAULT_CONTENT_REGISTRY_ADDRESS),
   NETWORK: z.enum(["localhost", "base", "baseSepolia"]).default(DEFAULT_NETWORK),
   CHAIN_URL: z.string().url().default(DEFAULT_CHAIN_URL),
-  IPFS_HOST: z.string().url().default(DEFAULT_IPFS_HOST)
+  IPFS_HOST: z.string().url().default(DEFAULT_IPFS_HOST),
+  PRIMARY_NODE_HOST: z.string().default(DEFAULT_PRIMARY_NODE_HOST)
 })).parse(process.env);
 
 // scripts/register-node.ts
@@ -35665,4 +35658,13 @@ var contract = new NodeRegistryContract({
   chain: exports_chains[config_default.NETWORK],
   contractAddress: config_default.NODE_REGISTRY_CONTRACT_ADDRESS
 });
-await contract.registerNode(PEER_ID, STORAGE);
+try {
+  const tx = await contract.registerNode(PEER_ID, STORAGE);
+  console.log(`Node registered with transaction hash: ${tx.transactionHash}`);
+} catch (err) {
+  if (err.message?.includes("Node already registered")) {
+    console.log("Node already registered");
+  } else {
+    console.error(err);
+  }
+}

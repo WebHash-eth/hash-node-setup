@@ -865,8 +865,7 @@ function FpSqrt(P) {
       return root;
     };
   }
-  if (P % _16n === _9n) {
-  }
+  if (P % _16n === _9n) {}
   return tonelliShanks(P);
 }
 var FIELD_FIELDS = [
