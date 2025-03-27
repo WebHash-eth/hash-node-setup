@@ -9,7 +9,7 @@ const DEFAULT_CONTENT_REGISTRY_ADDRESS =
   "0x183D99Ed54B29Bb10A5FB3AE101007d18f507202";
 const DEFAULT_NETWORK = "baseSepolia";
 const DEFAULT_CHAIN_URL =
-  "https://summer-boldest-borough.base-sepolia.quiknode.pro/ee822abdf436718f3e9d93b1279a9898600e907f";
+  "https://shy-patient-mound.base-sepolia.quiknode.pro/8a296cfbbaf2b2917da1b5d5884b8aaecc87d771/";
 const DEFAULT_IPFS_HOST = "http://node:5001/api/v0";
 const DEFAULT_PRIMARY_NODE_HOST = "node.webhash.com";
 
