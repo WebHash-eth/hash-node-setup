@@ -9,8 +9,8 @@ services:
       - "127.0.0.1:5001:5001" # IPFS API
     volumes:
       - ./scripts/rm-stale-lockfile.sh:/container-init.d/rm-stale-lockfile.sh:ro
-      - node_data:/data/ipfs
-      - node_export:/export
+      - ${STORAGE_PATH_IPFS}:/data/ipfs
+      - ${STORAGE_PATH_EXPORT}:/export
     environment:
       - IPFS_PROFILE=server
     restart: always
@@ -41,6 +41,3 @@ services:
     privileged: true
     env_file: .env
     restart: always
-volumes:
-  node_data:
-  node_export:
