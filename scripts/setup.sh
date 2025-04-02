@@ -47,6 +47,21 @@ install_dependency() {
 	esac
 }
 
+# Function to add or update environment variable
+add_env() {
+	local key=$1
+	local value=$2
+	local env_file=".env"
+
+	touch "$env_file"
+
+	if grep -q "^${key}=" "$env_file"; then
+		sed -i.bak "s|^${key}=.*|${key}=${value}|" "$env_file" && rm "${env_file}.bak"
+	else
+		echo "${key}=${value}" >>"$env_file"
+	fi
+}
+
 install_docker() {
 	if ! command -v docker &>/dev/null; then
 		echo "Docker not found. Installing Docker..."
@@ -135,7 +150,6 @@ select_storage_disk() {
 				CHOSEN_DISK="${mount_points[$((selection - 1))]}"
 			fi
 
-			echo "choosen diskk $CHOSEN_DISK"
 			if [ "$CHOSEN_DISK" = "/" ]; then
 				STORAGE_PATH="/root/$NODE_DATA_DIR_NAME"
 			else
@@ -154,20 +168,30 @@ select_storage_disk() {
 }
 
 move_existing_data() {
+	# stop and remove old containers
+	sudo docker stop node pinner telegraf &>/dev/null || true
+	sudo docker rm node pinner telegraf &>/dev/null || true
+
 	# Check if node_data volume exists
 	if sudo docker volume ls -q | grep -q "^webhash-node_node_data$"; then
-		echo "Moving IPFS data to $STORAGE_PATH"
+		echo "Moving IPFS data to $STORAGE_PATH_IPFS"
 		local existing_ipfs_dir=$(sudo docker volume inspect webhash-node_node_data | jq -r '.[0] | .Mountpoint')
+		echo "Existing IPFS dir: $existing_ipfs_dir"
 		sudo cp -r "$existing_ipfs_dir" "$STORAGE_PATH_IPFS"
-		sudo docker volume rm webhash-node_node_data >/dev/null
+
+		# TODO: Update me
+		# sudo docker volume rm webhash-node_node_data >/dev/null
 	fi
 
 	# Check if node_export volume exists
 	if sudo docker volume ls -q | grep -q "^webhash-node_node_export$"; then
-		echo "Moving export data to $STORAGE_PATH"
+		echo "Moving export data to $STORAGE_PATH_EXPORT"
 		local existing_export_dir=$(sudo docker volume inspect webhash-node_node_export | jq -r '.[0] | .Mountpoint')
+		echo "Existing export dir: $existing_export_dir"
 		sudo cp -r "$existing_export_dir" "$STORAGE_PATH_EXPORT"
-		sudo docker volume rm webhash-node_node_export >/dev/null
+
+		# TODO: Update me
+		# sudo docker volume rm webhash-node_node_export >/dev/null
 	fi
 }
 
@@ -254,14 +278,12 @@ node_init() {
 	# Capture the JSON response from node-init.js
 	local response=$("$BUN_PATH" ./scripts/node-init.js "$address" "$public_ip" "$storage")
 	# Extract telemetry config from response and write to .env file
-	# NOTE: This env file is used in telegraf
-	{
-		echo "INFLUXDB_URL=$(echo "$response" | jq -r '.telemetry.url')"
-		echo "INFLUXDB_TOKEN=$(echo "$response" | jq -r '.telemetry.token')"
-		echo "INFLUXDB_ORG=$(echo "$response" | jq -r '.telemetry.org')"
-		echo "INFLUXDB_BUCKET=$(echo "$response" | jq -r '.telemetry.bucket')"
-		echo "ADDRESS=$address"
-	} >.env
+	# NOTE: These envs are used in telegraf
+	add_env "INFLUXDB_URL" "$(echo "$response" | jq -r '.telemetry.url')"
+	add_env "INFLUXDB_TOKEN" "$(echo "$response" | jq -r '.telemetry.token')"
+	add_env "INFLUXDB_ORG" "$(echo "$response" | jq -r '.telemetry.org')"
+	add_env "INFLUXDB_BUCKET" "$(echo "$response" | jq -r '.telemetry.bucket')"
+	add_env "ADDRESS" "$address"
 }
 
 register_node() {
@@ -281,16 +303,12 @@ clone_repo() {
 		install_dependency git >/dev/null
 	fi
 
-	if [ -d "$REPO_PATH" ]; then
-		echo "Repository exists. Stopping running containers..."
-		if [ -f "$REPO_PATH/docker-compose.yaml" ]; then
-			sudo docker compose -f "$REPO_PATH/docker-compose.yaml" down &>/dev/null || true
-		fi
-		rm -rf "$REPO_PATH"
-	fi
+	sudo rm -rf "$REPO_PATH"
 	echo "Cloning repository..."
-	git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH --depth=1 &>/dev/null
+	git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH &>/dev/null
 	cd "$REPO_PATH"
+	# TODO: Update me
+	git checkout "feature/hd"
 }
 
 clone_repo
@@ -311,9 +329,9 @@ select_storage_disk
 
 STORAGE="$(df -B1 $CHOSEN_DISK | awk 'NR==2 {print $4}')"
 STORAGE_PATH_IPFS="$STORAGE_PATH/ipfs"
-echo "STORAGE_PATH_IPFS=$STORAGE_PATH_IPFS" >>.env
+add_env "STORAGE_PATH_IPFS" "$STORAGE_PATH_IPFS"
 STORAGE_PATH_EXPORT="$STORAGE_PATH/export"
-echo "STORAGE_PATH_EXPORT=$STORAGE_PATH_EXPORT" >>.env
+add_env "STORAGE_PATH_EXPORT" "$STORAGE_PATH_EXPORT"
 
 move_existing_data
 node_init "$ADDRESS" "$PUBLIC_IP" "$STORAGE"
