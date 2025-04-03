@@ -181,7 +181,6 @@ move_existing_data() {
 		echo "Existing IPFS dir: $existing_ipfs_dir"
 		sudo cp -r "$existing_ipfs_dir" "$STORAGE_PATH_IPFS"
 
-		# TODO: Update me
 		# sudo docker volume rm webhash-node_node_data >/dev/null
 	fi
 
@@ -192,7 +191,6 @@ move_existing_data() {
 		echo "Existing export dir: $existing_export_dir"
 		sudo cp -r "$existing_export_dir" "$STORAGE_PATH_EXPORT"
 
-		# TODO: Update me
 		# sudo docker volume rm webhash-node_node_export >/dev/null
 	fi
 }
@@ -272,7 +270,6 @@ update_config_json() {
 
 	# if file doesnt exists or invalid json
 	if ! sudo jq empty "$CONFIG_FILE" >/dev/null 2>&1; then
-		echo "creating config"
 		echo "{}" | sudo tee "$CONFIG_FILE" >/dev/null
 	fi
 
@@ -416,3 +413,4 @@ register_node "$PRIVATE_KEY" "$PUBLIC_IP" "$PEER_ID" "$STORAGE"
 
 update_config_json "chainId" "$CHAIN_ID"
 update_config_json "nodeProviderWsUrl" "$NODE_PROVIDER_URL"
+cd ~
