@@ -8,10 +8,7 @@ const DEFAULT_NODE_REGISTRY_ADDRESS =
 const DEFAULT_CONTENT_REGISTRY_ADDRESS =
   "0x183D99Ed54B29Bb10A5FB3AE101007d18f507202";
 const DEFAULT_NETWORK = "baseSepolia";
-const DEFAULT_CHAIN_URL =
-  "https://shy-patient-mound.base-sepolia.quiknode.pro/8a296cfbbaf2b2917da1b5d5884b8aaecc87d771/";
 const DEFAULT_IPFS_HOST = "http://node:5001/api/v0";
-const DEFAULT_PRIMARY_NODE_HOST = "node.webhash.com";
 
 export default z
   .preprocess(
@@ -30,6 +27,7 @@ export default z
         const hexValue = val.startsWith("0x") ? val : `0x${val}`;
         return hexValue as Hex;
       }),
+      CHAIN_WS_URL: z.string().url(),
 
       NODE_REGISTRY_CONTRACT_ADDRESS: z
         .string()
@@ -42,10 +40,7 @@ export default z
       NETWORK: z
         .enum(["localhost", "base", "baseSepolia"])
         .default(DEFAULT_NETWORK),
-      CHAIN_URL: z.string().url().default(DEFAULT_CHAIN_URL),
       IPFS_HOST: z.string().url().default(DEFAULT_IPFS_HOST),
-
-      PRIMARY_NODE_HOST: z.string().default(DEFAULT_PRIMARY_NODE_HOST),
     }),
   )
   .parse(process.env);

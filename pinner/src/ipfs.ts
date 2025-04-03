@@ -1,6 +1,7 @@
 import { CID } from "multiformats";
-import config from "./config.js";
 import pRetry from "p-retry";
+import config from "./config.js";
+import logger from "./logger.js";
 
 export async function pinContentToIpfs(cid: CID) {
   return pRetry(
@@ -30,9 +31,13 @@ export async function pinContentToIpfs(cid: CID) {
       maxTimeout: 60_000,
       randomize: true,
       onFailedAttempt: (error) => {
-        console.error(
-          `Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`,
-          error.message,
+        logger.error(
+          {
+            err: error,
+            attemptNumber: error.attemptNumber,
+            retriesLeft: error.retriesLeft,
+          },
+          `Pin attempt ${error.attemptNumber} failed. Retrying...`,
         );
       },
     },
