@@ -55,12 +55,12 @@ add_env() {
 	local value=$2
 	local env_file=".env"
 
-	touch "$env_file"
+	sudo touch "$env_file"
 
 	if grep -q "^${key}=" "$env_file"; then
-		sed -i.bak "s|^${key}=.*|${key}=${value}|" "$env_file" && rm "${env_file}.bak"
+		sudo sed -i.bak "s|^${key}=.*|${key}=${value}|" "$env_file" && rm "${env_file}.bak"
 	else
-		echo "${key}=${value}" >>"$env_file"
+		echo "${key}=${value}" | sudo tee -a "$env_file" >/dev/null
 	fi
 }
 
@@ -376,11 +376,11 @@ clone_repo() {
 	sudo rm -rf "~/.webhash-node" # remove old path
 
 	echo "Cloning repository..."
-	sudo git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH --depth 1 &>/dev/null
-	sudo cd "$REPO_PATH"
+	sudo git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH &>/dev/null
+	cd "$REPO_PATH"
 
 	# TODO: Update me
-	git checkout "feature/custom-rpc-endpoint"
+	sudo git checkout "feature/custom-rpc-endpoint"
 }
 
 clone_repo
