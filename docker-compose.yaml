@@ -26,6 +26,7 @@ services:
       dockerfile: Dockerfile
       args:
         PRIVATE_KEY: ${PRIVATE_KEY}
+        CHAIN_WS_URL: ${NODE_PROVIDER_URL}
     depends_on:
       node:
         condition: service_healthy
