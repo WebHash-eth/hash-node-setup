@@ -10,6 +10,7 @@ set -u
 EVM_KEY_FILE=/opt/webhash-node/evm.key
 BUN_PATH=~/.bun/bin/bun
 REPO_PATH=~/.webhash-node
+NODE_DATA_DIR_NAME=.webhash-node-data
 
 # Function to handle errors
 trap 'echo "An error occurred. Exiting..." >&2' ERR
@@ -46,6 +47,21 @@ install_dependency() {
 	esac
 }
 
+# Function to add or update environment variable
+add_env() {
+	local key=$1
+	local value=$2
+	local env_file=".env"
+
+	touch "$env_file"
+
+	if grep -q "^${key}=" "$env_file"; then
+		sed -i.bak "s|^${key}=.*|${key}=${value}|" "$env_file" && rm "${env_file}.bak"
+	else
+		echo "${key}=${value}" >>"$env_file"
+	fi
+}
+
 install_docker() {
 	if ! command -v docker &>/dev/null; then
 		echo "Docker not found. Installing Docker..."
@@ -77,12 +93,114 @@ get_public_ip() {
 	curl -s -4 ifconfig.me
 }
 
+select_storage_disk() {
+	echo "Do you want to use a separate disk for storage? (y/n)"
+	read -r use_separate_disk
+
+	if [[ "$use_separate_disk" =~ ^[Nn] ]]; then
+		CHOSEN_DISK="/"
+		STORAGE_PATH="/root/$NODE_DATA_DIR_NAME"
+		if sudo mkdir -p "$STORAGE_PATH" 2>/dev/null; then
+			echo "✓ Using default path: $STORAGE_PATH"
+			return 0
+		else
+			echo "Error: Cannot write to default path $CHOSEN_DISK. Please try another location."
+			exit 1
+		fi
+	fi
+
+	echo "Select storage location for IPFS:"
+	echo "--------------------------------"
+
+	# Get mounted paths and display as options
+	declare -a mount_points
+
+	counter=1
+	echo "Available mount points:"
+	echo "----------------------------------------"
+	printf "  #  %-10s %-8s %-20s\n" "NAME" "SIZE" "MOUNTPOINT"
+	echo "----------------------------------------"
+	while IFS="|" read -r name size mountpoint; do
+		if [ ! -z "$name" ] &&
+			# exclude boot and swap partitions
+			[[ ! "$mountpoint" =~ ^/boot ]] &&
+			[[ ! "$mountpoint" = "[SWAP]" ]]; then
+			mount_points+=("$mountpoint")
+			printf "  %-2d %-10s %-8s %-20s\n" "$counter" "$name" "$size" "$mountpoint"
+			((counter++))
+		fi
+	done < <(lsblk --json -o NAME,SIZE,MOUNTPOINT |
+		jq -r '.blockdevices[] | recurse(.children[]?) | 
+		select(.mountpoint != null) | 
+		"\(.name)|\(.size)|\(.mountpoint)"')
+
+	# Add custom path option
+	mount_points+=("custom")
+	echo "  $counter  Enter custom path"
+
+	while true; do
+		echo -e "\nEnter selection number:"
+		read -r selection
+
+		if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -le "$counter" ]; then
+			if [ "${mount_points[$((selection - 1))]}" == "custom" ]; then
+				echo "Enter custom path (e.g., /mnt/data):"
+				read -r CHOSEN_DISK
+			else
+				CHOSEN_DISK="${mount_points[$((selection - 1))]}"
+			fi
+
+			if [ "$CHOSEN_DISK" = "/" ]; then
+				STORAGE_PATH="/root/$NODE_DATA_DIR_NAME"
+			else
+				STORAGE_PATH="$CHOSEN_DISK/$NODE_DATA_DIR_NAME"
+			fi
+			if sudo mkdir -p "$STORAGE_PATH" 2>/dev/null; then
+				echo "✓ Selected disk: $CHOSEN_DISK"
+				return 0
+			else
+				echo "Error: Cannot write to $CHOSEN_DISK. Please try another location."
+			fi
+		else
+			echo "Invalid selection. Please try again."
+		fi
+	done
+}
+
+move_existing_data() {
+	# stop and remove old containers
+	sudo docker stop node pinner telegraf &>/dev/null || true
+	sudo docker rm node pinner telegraf &>/dev/null || true
+
+	# Check if node_data volume exists
+	if sudo docker volume ls -q | grep -q "^webhash-node_node_data$"; then
+		echo "Moving IPFS data to $STORAGE_PATH_IPFS"
+		local existing_ipfs_dir=$(sudo docker volume inspect webhash-node_node_data | jq -r '.[0] | .Mountpoint')
+		echo "Existing IPFS dir: $existing_ipfs_dir"
+		sudo cp -r "$existing_ipfs_dir" "$STORAGE_PATH_IPFS"
+
+		# TODO: Update me
+		# sudo docker volume rm webhash-node_node_data >/dev/null
+	fi
+
+	# Check if node_export volume exists
+	if sudo docker volume ls -q | grep -q "^webhash-node_node_export$"; then
+		echo "Moving export data to $STORAGE_PATH_EXPORT"
+		local existing_export_dir=$(sudo docker volume inspect webhash-node_node_export | jq -r '.[0] | .Mountpoint')
+		echo "Existing export dir: $existing_export_dir"
+		sudo cp -r "$existing_export_dir" "$STORAGE_PATH_EXPORT"
+
+		# TODO: Update me
+		# sudo docker volume rm webhash-node_node_export >/dev/null
+	fi
+}
+
 # Function to start node, configure it and return peer ID
 start_node() {
 	local public_ip=$1
 	echo "Starting node with public IP: $public_ip..."
 
-	# Start the container
+	# Start the container with PRIVATE_KEY env var
 	PRIVATE_KEY=$PRIVATE_KEY sudo -E docker compose up -d --build
 
 	# Wait for node to be ready
@@ -160,14 +278,12 @@ node_init() {
 	# Capture the JSON response from node-init.js
 	local response=$("$BUN_PATH" ./scripts/node-init.js "$address" "$public_ip" "$storage")
 	# Extract telemetry config from response and write to .env file
-	# NOTE: This env file is used in telegraf
-	{
-		echo "INFLUXDB_URL=$(echo "$response" | jq -r '.telemetry.url')"
-		echo "INFLUXDB_TOKEN=$(echo "$response" | jq -r '.telemetry.token')"
-		echo "INFLUXDB_ORG=$(echo "$response" | jq -r '.telemetry.org')"
-		echo "INFLUXDB_BUCKET=$(echo "$response" | jq -r '.telemetry.bucket')"
-		echo "ADDRESS=$address"
-	} >.env
+	# NOTE: These envs are used in telegraf
+	add_env "INFLUXDB_URL" "$(echo "$response" | jq -r '.telemetry.url')"
+	add_env "INFLUXDB_TOKEN" "$(echo "$response" | jq -r '.telemetry.token')"
+	add_env "INFLUXDB_ORG" "$(echo "$response" | jq -r '.telemetry.org')"
+	add_env "INFLUXDB_BUCKET" "$(echo "$response" | jq -r '.telemetry.bucket')"
+	add_env "ADDRESS" "$address"
 }
 
 register_node() {
@@ -187,15 +303,19 @@ clone_repo() {
 		install_dependency git >/dev/null
 	fi
 
-	rm -rf $REPO_PATH >/dev/null
-	git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH --depth=1 >/dev/null
-	cd $REPO_PATH
+	sudo rm -rf "$REPO_PATH"
+	echo "Cloning repository..."
+	git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH &>/dev/null
+	cd "$REPO_PATH"
+	# TODO: Update me
+	git checkout "feature/hd"
 }
 
 clone_repo
 
 # Main execution
 install_docker
+
 install_bun
 ensure_jq
 import_evm_key
@@ -204,8 +324,16 @@ PUBLIC_IP=$(get_public_ip)
 echo "Public IP: $PUBLIC_IP"
 PRIVATE_KEY=$(sudo cat $EVM_KEY_FILE | jq -r '.privateKey')
 ADDRESS=$(sudo cat $EVM_KEY_FILE | jq -r '.address')
-STORAGE="$(df -B1 / | awk 'NR==2 {print $4}')"
 
+select_storage_disk
+
+STORAGE="$(df -B1 $CHOSEN_DISK | awk 'NR==2 {print $4}')"
+STORAGE_PATH_IPFS="$STORAGE_PATH/ipfs"
+add_env "STORAGE_PATH_IPFS" "$STORAGE_PATH_IPFS"
+STORAGE_PATH_EXPORT="$STORAGE_PATH/export"
+add_env "STORAGE_PATH_EXPORT" "$STORAGE_PATH_EXPORT"
+
+move_existing_data
 node_init "$ADDRESS" "$PUBLIC_IP" "$STORAGE"
 start_node "$PUBLIC_IP"
 
