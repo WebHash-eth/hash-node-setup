@@ -9,8 +9,10 @@ set -u
 
 EVM_KEY_FILE=/opt/webhash-node/evm.key
 BUN_PATH=~/.bun/bin/bun
-REPO_PATH=~/.webhash-node
+REPO_PATH=/opt/webhash-node/repo
 NODE_DATA_DIR_NAME=.webhash-node-data
+CONFIG_FILE=/opt/webhash-node/config.json
+CHAIN_ID="84532" # base sepolia
 
 # Function to handle errors
 trap 'echo "An error occurred. Exiting..." >&2' ERR
@@ -53,12 +55,12 @@ add_env() {
 	local value=$2
 	local env_file=".env"
 
-	touch "$env_file"
+	sudo touch "$env_file"
 
 	if grep -q "^${key}=" "$env_file"; then
-		sed -i.bak "s|^${key}=.*|${key}=${value}|" "$env_file" && rm "${env_file}.bak"
+		sudo sed -i.bak "s|^${key}=.*|${key}=${value}|" "$env_file" && rm "${env_file}.bak"
 	else
-		echo "${key}=${value}" >>"$env_file"
+		echo "${key}=${value}" | sudo tee -a "$env_file" >/dev/null
 	fi
 }
 
@@ -179,7 +181,6 @@ move_existing_data() {
 		echo "Existing IPFS dir: $existing_ipfs_dir"
 		sudo cp -r "$existing_ipfs_dir" "$STORAGE_PATH_IPFS"
 
-		# TODO: Update me
 		# sudo docker volume rm webhash-node_node_data >/dev/null
 	fi
 
@@ -190,7 +191,6 @@ move_existing_data() {
 		echo "Existing export dir: $existing_export_dir"
 		sudo cp -r "$existing_export_dir" "$STORAGE_PATH_EXPORT"
 
-		# TODO: Update me
 		# sudo docker volume rm webhash-node_node_export >/dev/null
 	fi
 }
@@ -201,7 +201,7 @@ start_node() {
 	echo "Starting node with public IP: $public_ip..."
 
 	# Start the container with PRIVATE_KEY env var
-	PRIVATE_KEY=$PRIVATE_KEY sudo -E docker compose up -d --build
+	PRIVATE_KEY=$PRIVATE_KEY NODE_PROVIDER_URL=$NODE_PROVIDER_URL sudo -E docker compose up -d --build
 
 	# Wait for node to be ready
 	echo "Waiting for node container to be ready..."
@@ -264,6 +264,72 @@ install_bun() {
 	fi
 }
 
+update_config_json() {
+	local key=$1
+	local value=$2
+
+	# if file doesnt exists or invalid json
+	if ! sudo jq empty "$CONFIG_FILE" >/dev/null 2>&1; then
+		echo "{}" | sudo tee "$CONFIG_FILE" >/dev/null
+	fi
+
+	# use temp file just to be safe
+	local temp_config=$(mktemp)
+	sudo cat "$CONFIG_FILE" >"$temp_config"
+	jq --arg key "$key" --arg value "$value" '.[$key] = $value' "$temp_config" | sudo tee "$CONFIG_FILE" >/dev/null
+	rm "$temp_config"
+}
+
+get_node_provider_url() {
+	if [ -f "$CONFIG_FILE" ]; then
+		# '// empty' returns empty string if the value doesn't exists
+		existing_url=$(sudo jq -r '.nodeProviderWsUrl // empty' "$CONFIG_FILE" 2>/dev/null)
+		if [[ -n "$existing_url" && "$existing_url" == wss://* ]]; then
+			echo "✓ Using existing Node Provider URL from config: $existing_url"
+			NODE_PROVIDER_URL="$existing_url"
+			return 0
+		fi
+	fi
+
+	local chain_name=""
+
+	case "$CHAIN_ID" in
+	"84532")
+		chain_name="Base Sepolia"
+		;;
+	*) ;;
+	esac
+
+	while true; do
+		echo "Please enter your $chain_name node provider WebSocket URL (wss://...):"
+		read -r NODE_PROVIDER_URL
+
+		if [[ "$NODE_PROVIDER_URL" == wss://* ]]; then
+			local remote_chain_id=$("$BUN_PATH" "./bin/get-chain-id.js" "$NODE_PROVIDER_URL" 2>/dev/null || echo "error")
+
+			if [[ "$remote_chain_id" == "error" ]]; then
+				echo "Error: Failed to get chain ID from the node provider URL."
+				echo "       Please check the URL, ensure the node is running, and verify network connectivity."
+				continue
+			fi
+
+			if [[ "$remote_chain_id" != "$CHAIN_ID" ]]; then
+				echo "Error: Chain ID mismatch for $chain_name network."
+				echo "       Expected chain ID: $CHAIN_ID"
+				echo "       Got chain ID from URL: $remote_chain_id"
+				echo "Please provide a node provider URL for the correct network."
+				continue
+			fi
+
+			echo "✓ Chain ID verified successfully ($remote_chain_id)."
+			echo "✓ Node provider URL set for $chain_name."
+			break
+		else
+			echo "Invalid format. URL must start with wss://"
+		fi
+	done
+}
+
 ensure_jq() {
 	if ! command -v jq &>/dev/null; then
 		echo "Installing jq..."
@@ -304,21 +370,23 @@ clone_repo() {
 	fi
 
 	sudo rm -rf "$REPO_PATH"
+	sudo rm -rf "~/.webhash-node" # remove old path
+
 	echo "Cloning repository..."
-	git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH &>/dev/null
+	sudo git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH &>/dev/null
 	cd "$REPO_PATH"
+
 	# TODO: Update me
-	git checkout "feature/hd"
+	sudo git checkout "feature/custom-rpc-endpoint"
 }
 
 clone_repo
 
-# Main execution
 install_docker
-
 install_bun
 ensure_jq
 import_evm_key
+get_node_provider_url
 
 PUBLIC_IP=$(get_public_ip)
 echo "Public IP: $PUBLIC_IP"
@@ -342,3 +410,7 @@ PEER_ID=$(sudo docker exec node ipfs id -f='<id>')
 echo "Node started with peer ID: $PEER_ID"
 
 register_node "$PRIVATE_KEY" "$PUBLIC_IP" "$PEER_ID" "$STORAGE"
+
+update_config_json "chainId" "$CHAIN_ID"
+update_config_json "nodeProviderWsUrl" "$NODE_PROVIDER_URL"
+cd ~

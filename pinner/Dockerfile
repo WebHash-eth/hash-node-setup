@@ -28,11 +28,11 @@ RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 --ingroup nodejs nodeuser
 
 # Set environment variables
-ENV NODE_ENV=production
+# ENV NODE_ENV=production
 
-# Setup private key from build arg
-ARG PRIVATE_KEY
-ENV PRIVATE_KEY=${PRIVATE_KEY}
+# # Setup private key from build arg
+# ARG PRIVATE_KEY
+# ENV PRIVATE_KEY=${PRIVATE_KEY}
 
 # Copy only necessary files from builder
 COPY --from=builder --chown=nodeuser:nodejs /app/package*.json ./

@@ -1,0 +1,2 @@
+// @bun
+import{j as r,l as e}from"./chunks/79hcgrf1.js";import"./chunks/pqjkx1hd.js";import"./chunks/aagdeg7m.js";import"./chunks/4tj97cbs.js";import"./chunks/nz4br084.js";import"./chunks/qtc91ca4.js";import"./chunks/xd879rxk.js";async function n(){let t=process.argv[2];if(!t)process.exit(1);try{let c=e(t),o=r({transport:c}),s=await o.getChainId();console.log(s),(await o.transport.getRpcClient()).close(),process.exit(0)}catch(c){console.error(`Error getting chain ID from ${t}:`,c),process.exit(1)}}n();
