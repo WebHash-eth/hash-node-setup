@@ -1,7 +1,10 @@
 import { CID } from "multiformats";
 import {
+  Address,
   createPublicClient,
   createWalletClient,
+  Hex,
+  hexToBytes,
   PublicClient,
   webSocket,
 } from "viem";
@@ -9,6 +12,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import * as chains from "viem/chains";
 import config from "./config.js";
 import { ContentRegistryContract } from "./contracts/contentRegistry.js";
+import { onEnsContentHashChanged } from "./ens.js";
 import { pinContentToIpfs } from "./ipfs.js";
 import logger from "./logger.js";
 
@@ -37,33 +41,34 @@ const contentContract = new ContentRegistryContract({
   walletClient,
 });
 
+function withErrorLogger<Args extends unknown[], Ret>(
+  callback: (...args: Args) => Promise<Ret>,
+) {
+  return async (...args: Args): Promise<Ret | void> => {
+    try {
+      return callback(...args);
+    } catch (err) {
+      logger.error({ err }, `Error executing ${callback.name}`);
+    }
+  };
+}
+
+async function registerContent(uploader: Address, hexCid: Hex) {
+  const cid = CID.decode(hexToBytes(hexCid));
+  logger.info({ uploader, cid }, "Pinning content");
+  const pinResult = await pinContentToIpfs(cid);
+  logger.info({ pinResult }, "Pinned content to IPFS");
+  // TODO: This may fail if content registry doesn't have this CID registered yet, find a solution
+  const tx = await contentContract.confirmPin(hexCid);
+  logger.info({ tx: tx.transactionHash }, "Confirmed pin on-chain");
+}
+
 async function main() {
   logger.info("Starting pinner service...");
-
-  contentContract.watchEvent("ContentRegistered", async (logs) => {
-    for (const log of logs) {
-      const logContext = { event: log };
-      try {
-        logger.info(logContext, "Processing ContentRegistered event");
-        const hexCid = log.args.CID;
-        const bytes = Buffer.from(
-          hexCid.startsWith("0x") ? hexCid.slice(2) : hexCid,
-          "hex",
-        );
-        const cid = CID.decode(bytes);
-        logger.info({ ...logContext, cid: cid.toString() }, "Decoded CID");
-        const pinResult = await pinContentToIpfs(cid);
-        logger.info({ ...logContext, pinResult }, "Pinned content to IPFS");
-        const tx = await contentContract.confirmPin(hexCid);
-        logger.info(
-          { ...logContext, transactionHash: tx.transactionHash },
-          "Confirmed pin on-chain",
-        );
-      } catch (error) {
-        logger.error({ ...logContext, err: error }, "Error processing event");
-      }
-    }
-  });
+  const callback = withErrorLogger(registerContent);
+  contentContract.onContentRegistered(callback);
+  // TODO : test me
+  onEnsContentHashChanged(callback);
 }
 
 main();

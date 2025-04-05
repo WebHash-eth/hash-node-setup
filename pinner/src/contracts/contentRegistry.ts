@@ -91,4 +91,14 @@ export class ContentRegistryContract {
     });
     return unwatch;
   }
+
+  onContentRegistered(
+    callback: (uploader: Address, cid: Hash) => Promise<unknown>,
+  ) {
+    this.watchEvent("ContentRegistered", async (logs) => {
+      for (const log of logs) {
+        await callback(log.args.uploader, log.args.CID);
+      }
+    });
+  }
 }
