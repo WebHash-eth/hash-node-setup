@@ -1,7 +1,7 @@
 services:
   node:
     container_name: node
-    image: ipfs/kubo:latest
+    image: ipfs/kubo:v0.34.1
     privileged: true
     ports:
       - "4001:4001" # IPFS swarm (TCP)
@@ -33,7 +33,7 @@ services:
         condition: service_healthy
     restart: always
   telegraf:
-    image: telegraf:latest
+    image: telegraf:1.34.0
     container_name: telegraf
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
