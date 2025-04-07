@@ -33,7 +33,7 @@ export async function onEnsContentHashChanged(
   callback: (uploader: Address, hexCid: Hex) => Promise<void>,
 ) {
   logger.info(
-    `Watching ENS ContenthashChanged events with url: ${config.ETH_MAINNET_CHAIN_WS_URL.slice(0, 10)}...`,
+    `Watching ENS ContenthashChanged events with url: ${config.ETH_MAINNET_CHAIN_WS_URL.slice(0, 20)}...`,
   );
   publicClient.watchContractEvent({
     abi: ensPublicResolverAbi,

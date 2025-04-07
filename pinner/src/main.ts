@@ -21,7 +21,6 @@ const wsTransport = webSocket(config.CHAIN_WS_URL, {
     attempts: Infinity,
   },
 });
-logger.info(`Connecting to chain: ${config.CHAIN_WS_URL}...`);
 
 const account = privateKeyToAccount(config.PRIVATE_KEY);
 const publicClient = createPublicClient({
@@ -66,7 +65,12 @@ async function registerContent(uploader: Address, hexCid: Hex) {
 async function main() {
   logger.info("Starting pinner service...");
   const callback = withErrorLogger(registerContent);
+
+  logger.info(
+    `Watching ContentRegistered event with url: ${config.CHAIN_WS_URL.slice(0, 20)}...`,
+  );
   contentContract.onContentRegistered(callback);
+
   // TODO : test me
   onEnsContentHashChanged(callback);
 }
