@@ -32,6 +32,9 @@ const publicClient = createPublicClient({
 export async function onEnsContentHashChanged(
   callback: (uploader: Address, hexCid: Hex) => Promise<void>,
 ) {
+  logger.info(
+    `Watching ENS ContenthashChanged events with url: ${config.ETH_MAINNET_CHAIN_WS_URL.slice(0, 10)}...`,
+  );
   publicClient.watchContractEvent({
     abi: ensPublicResolverAbi,
     address: ENS_PUBLIC_RESOLVER_CONTRACT_ADDRESS,
