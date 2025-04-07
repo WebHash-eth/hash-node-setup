@@ -1,9 +1,10 @@
 import { CID } from "multiformats";
+import pRetry from "p-retry";
 import {
   Address,
   createPublicClient,
   createWalletClient,
-  Hex,
+  Hash,
   hexToBytes,
   PublicClient,
   webSocket,
@@ -15,6 +16,7 @@ import { ContentRegistryContract } from "./contracts/contentRegistry.js";
 import { onEnsContentHashChanged } from "./ens.js";
 import { pinContentToIpfs } from "./ipfs.js";
 import logger from "./logger.js";
+import { cidProcessingState, withErrorLogger } from "./utils.js";
 
 const wsTransport = webSocket(config.CHAIN_WS_URL, {
   reconnect: {
@@ -40,39 +42,64 @@ const contentContract = new ContentRegistryContract({
   walletClient,
 });
 
-function withErrorLogger<Args extends unknown[], Ret>(
-  callback: (...args: Args) => Promise<Ret>,
-) {
-  return async (...args: Args): Promise<Ret | void> => {
-    try {
-      return callback(...args);
-    } catch (err) {
-      logger.error({ err }, `Error executing ${callback.name}`);
-    }
-  };
+async function waitForContentRegister(cid: Hash) {
+  return pRetry(
+    async (attempt) => {
+      logger.info({ cid, attempt }, "Fetching content info");
+      const content = await contentContract.getContentInfo(cid);
+      logger.info({ content }, `Fetch content for ${cid}`);
+      return content;
+    },
+    {
+      // // only retry if the error is content not registered
+      // shouldRetry: (err) => {
+      //   return (
+      //     err instanceof ContractFunctionExecutionError &&
+      //     err.message.includes("Content not registered")
+      //   );
+      // },
+      retries: 10,
+      minTimeout: 10_000, // 10 sec
+      factor: 10,
+    },
+  );
 }
 
-async function registerContent(uploader: Address, hexCid: Hex) {
-  const cid = CID.decode(hexToBytes(hexCid));
-  logger.info({ uploader, cid }, "Pinning content");
-  const pinResult = await pinContentToIpfs(cid);
+async function registerContent(
+  uploader: Address,
+  cid: Hash,
+  waitForContent = false,
+) {
+  if (cidProcessingState.has(cid)) {
+    logger.info({ cid }, "Skipping content registration: already processing");
+    return;
+  }
+  cidProcessingState.add(cid);
+  const parsedCid = CID.decode(hexToBytes(cid));
+
+  logger.info({ uploader, cid: parsedCid }, "Pinning content");
+  const pinResult = await pinContentToIpfs(parsedCid);
   logger.info({ pinResult }, "Pinned content to IPFS");
-  // TODO: This may fail if content registry doesn't have this CID registered yet, find a solution
-  const tx = await contentContract.confirmPin(hexCid);
+
+  if (waitForContent) {
+    await waitForContentRegister(cid);
+  }
+  const tx = await contentContract.confirmPin(cid);
   logger.info({ tx: tx.transactionHash }, "Confirmed pin on-chain");
 }
 
 async function main() {
   logger.info("Starting pinner service...");
-  const callback = withErrorLogger(registerContent);
+
+  const ensCallback = withErrorLogger((uploader: Address, cid: Hash) => {
+    return registerContent(uploader, cid, true);
+  });
 
   logger.info(
     `Watching ContentRegistered event with url: ${config.CHAIN_WS_URL.slice(0, 20)}...`,
   );
-  contentContract.onContentRegistered(callback);
-
-  // TODO : test me
-  onEnsContentHashChanged(callback);
+  contentContract.onContentRegistered(withErrorLogger(registerContent));
+  onEnsContentHashChanged(ensCallback);
 }
 
 main();
