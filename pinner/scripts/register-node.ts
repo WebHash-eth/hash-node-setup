@@ -26,10 +26,13 @@ const contract = new NodeRegistryContract({
   contractAddress: config.NODE_REGISTRY_CONTRACT_ADDRESS as Address,
 });
 
+console.error("Node registry", config.NODE_REGISTRY_CONTRACT_ADDRESS);
+
 try {
   const tx = await contract.registerNode(PEER_ID, STORAGE);
   console.log(`Node registered with transaction hash: ${tx.transactionHash}`);
 } catch (err) {
+  console.error(err);
   if (err.message?.includes("Node already registered")) {
     console.log("Node already registered");
   } else {
