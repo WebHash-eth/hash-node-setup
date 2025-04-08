@@ -158,34 +158,36 @@ export default [
     name: "getNodeInfo",
     outputs: [
       {
-        internalType: "address",
-        name: "nodeAddress",
-        type: "address",
-      },
-      {
-        internalType: "bytes",
-        name: "peerId",
-        type: "bytes",
-      },
-      {
-        internalType: "uint256",
-        name: "storageCapacity",
-        type: "uint256",
-      },
-      {
-        internalType: "bool",
-        name: "isActive",
-        type: "bool",
-      },
-      {
-        internalType: "uint256",
-        name: "storageUsed",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "pinnedCIDsCount",
-        type: "uint256",
+        components: [
+          {
+            internalType: "address",
+            name: "nodeAddress",
+            type: "address",
+          },
+          {
+            internalType: "bytes",
+            name: "peerId",
+            type: "bytes",
+          },
+          {
+            internalType: "uint256",
+            name: "storageCapacity",
+            type: "uint256",
+          },
+          {
+            internalType: "bool",
+            name: "isActive",
+            type: "bool",
+          },
+          {
+            internalType: "uint256",
+            name: "storageUsed",
+            type: "uint256",
+          },
+        ],
+        internalType: "struct NodeRegistry.Node",
+        name: "",
+        type: "tuple",
       },
     ],
     stateMutability: "view",
@@ -224,11 +226,6 @@ export default [
       {
         internalType: "uint256",
         name: "storageUsed",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "pinnedCIDsCount",
         type: "uint256",
       },
     ],

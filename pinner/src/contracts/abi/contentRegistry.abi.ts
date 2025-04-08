@@ -36,7 +36,7 @@ export default [
     anonymous: false,
     inputs: [
       {
-        indexed: true,
+        indexed: false,
         internalType: "bytes",
         name: "CID",
         type: "bytes",
@@ -44,7 +44,7 @@ export default [
       {
         indexed: true,
         internalType: "address",
-        name: "node",
+        name: "nodeAddress",
         type: "address",
       },
     ],
@@ -80,7 +80,7 @@ export default [
     anonymous: false,
     inputs: [
       {
-        indexed: true,
+        indexed: false,
         internalType: "bytes",
         name: "CID",
         type: "bytes",
@@ -88,11 +88,30 @@ export default [
       {
         indexed: true,
         internalType: "address",
-        name: "node",
+        name: "nodeAddress",
         type: "address",
       },
     ],
     name: "ContentUnpinned",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "address",
+        name: "oldAddress",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "newAddress",
+        type: "address",
+      },
+    ],
+    name: "NodeRegistryAddressUpdated",
     type: "event",
   },
   {
@@ -115,23 +134,28 @@ export default [
     type: "event",
   },
   {
-    anonymous: false,
     inputs: [
       {
-        indexed: true,
-        internalType: "bytes",
-        name: "CID",
-        type: "bytes",
+        internalType: "bytes32",
+        name: "",
+        type: "bytes32",
       },
       {
-        indexed: false,
-        internalType: "address[]",
-        name: "nodes",
-        type: "address[]",
+        internalType: "address",
+        name: "",
+        type: "address",
       },
     ],
-    name: "StorageNodesAssigned",
-    type: "event",
+    name: "cidToNode",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
   },
   {
     inputs: [
@@ -149,9 +173,9 @@ export default [
   {
     inputs: [
       {
-        internalType: "bytes",
+        internalType: "bytes32",
         name: "",
-        type: "bytes",
+        type: "bytes32",
       },
     ],
     name: "contentRegistry",
@@ -273,6 +297,19 @@ export default [
   {
     inputs: [],
     name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "_newNodeRegistryAddress",
+        type: "address",
+      },
+    ],
+    name: "setNodeRegistryAddress",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
