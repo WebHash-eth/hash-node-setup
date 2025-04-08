@@ -61,6 +61,7 @@ async function waitForContentRegister(cid: Hash) {
       retries: 10,
       minTimeout: 10_000, // 10 sec
       factor: 10,
+      maxTimeout: 300_000, // 5 min
     },
   );
 }
