@@ -2,18 +2,29 @@ import { Address, Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import * as chains from "viem/chains";
 import { NodeRegistryContract } from "../src/contracts/nodeRegistry.js";
-import config from "../src/config.js";
 
-const { PEER_ID, STORAGE: STORAGE_STRING } = process.env;
-
-if (!PEER_ID || !STORAGE_STRING) {
-  throw new Error("Missing PEER_ID or STORAGE environment variables");
+function shouldExist(key: string) {
+  const env = process.env;
+  if (!env[key]) {
+    throw new Error(`Missing ${key} environment variable`);
+  }
+  return env[key];
 }
-const STORAGE = BigInt(STORAGE_STRING);
 
-if (!Object.keys(chains).includes(config.NETWORK)) {
-  throw new Error("Invalid network");
-}
+const config = {
+  NODE_REGISTRY_CONTRACT_ADDRESS: "0xA8841266B81b1ae704D3C3e569266fA71a2db491",
+  NETWORK: process.env.CHAIN_ID === "8453" ? "base" : "baseSepolia",
+  PRIVATE_KEY: shouldExist("PRIVATE_KEY"),
+  PEER_ID: shouldExist("PEER_ID"),
+  STORAGE: (() => {
+    const s = shouldExist("STORAGE");
+    const storage = BigInt(s);
+    if (storage <= 0n) {
+      throw new Error(`Invalid STORAGE value: ${storage}`);
+    }
+    return storage;
+  })(),
+};
 
 function addHexPrefix(hex: string): Hex {
   return hex.startsWith("0x") ? (hex as Hex) : `0x${hex}`;
@@ -29,7 +40,7 @@ const contract = new NodeRegistryContract({
 console.error("Node registry", config.NODE_REGISTRY_CONTRACT_ADDRESS);
 
 try {
-  const tx = await contract.registerNode(PEER_ID, STORAGE);
+  const tx = await contract.registerNode(config.PEER_ID, config.STORAGE);
   console.log(`Node registered with transaction hash: ${tx.transactionHash}`);
 } catch (err) {
   console.error(err);
