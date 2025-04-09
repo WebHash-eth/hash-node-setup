@@ -37,8 +37,6 @@ const contract = new NodeRegistryContract({
   contractAddress: config.NODE_REGISTRY_CONTRACT_ADDRESS as Address,
 });
 
-console.error("Node registry", config.NODE_REGISTRY_CONTRACT_ADDRESS);
-
 try {
   const tx = await contract.registerNode(config.PEER_ID, config.STORAGE);
   console.log(`Node registered with transaction hash: ${tx.transactionHash}`);
