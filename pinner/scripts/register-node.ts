@@ -43,7 +43,6 @@ try {
   const tx = await contract.registerNode(config.PEER_ID, config.STORAGE);
   console.log(`Node registered with transaction hash: ${tx.transactionHash}`);
 } catch (err) {
-  console.error(err);
   if (err.message?.includes("Node already registered")) {
     console.log("Node already registered");
   } else {
