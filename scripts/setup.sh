@@ -469,6 +469,7 @@ register_node
 update_config_json "chainId" "$CHAIN_ID"
 update_config_json "nodeProviderWsUrl" "$NODE_PROVIDER_URL"
 update_config_json "ethMainnetNodeProviderWsUrl" "$ETH_MAINNET_NODE_PROVIDER_URL"
+update_config_json "storagePath" "$STORAGE_PATH"
 
 echo ""
 echo "----------------------------------------"
