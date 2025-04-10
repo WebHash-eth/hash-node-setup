@@ -13,6 +13,7 @@ REPO_PATH=/opt/webhash-node/repo
 NODE_DATA_DIR_NAME=.webhash-node-data
 CONFIG_FILE=/opt/webhash-node/config.json
 CHAIN_ID="84532" # base sepolia
+VERSION="0.2"
 
 # Function to handle errors
 trap 'echo "An error occurred. Exiting..." >&2' ERR
@@ -336,6 +337,41 @@ get_node_provider_url() {
 	echo "$result_url"
 }
 
+get_user_email() {
+	local config_key="email"
+	local result_email=""
+
+	# Check if email exists in config
+	if [[ -f "$CONFIG_FILE" ]]; then
+		local existing_email=$(sudo jq -r --arg key "$config_key" '.[$key] // empty' "$CONFIG_FILE" 2>/dev/null)
+		# Basic validation: check if it contains '@'
+		if [[ -n "$existing_email" && "$existing_email" == *"@"* ]]; then
+			echo "✓ Using existing email from config: $existing_email" >&2
+			result_email="$existing_email"
+		fi
+	fi
+
+	# If no valid email found in config, prompt the user
+	if [[ -z "$result_email" ]]; then
+		while true; do
+			echo "Please enter your email address:" >&2
+			read -r input_email
+
+			# Basic validation: check if it contains '@'
+			if [[ "$input_email" == *"@"* ]]; then
+				echo "✓ Email format looks valid." >&2
+				result_email="$input_email"
+				# Save the email to config
+				update_config_json "$config_key" "$result_email"
+				break
+			else
+				echo "Invalid email format. Please ensure it contains '@'." >&2
+			fi
+		done
+	fi
+	echo "$result_email"
+}
+
 ensure_jq() {
 	if ! command -v jq &>/dev/null; then
 		echo "Installing jq..."
@@ -344,18 +380,20 @@ ensure_jq() {
 }
 
 node_init() {
-	local address=$1
-	local public_ip=$2
-	local storage=$3
 	# Capture the JSON response from node-init.js
-	local response=$("$BUN_PATH" ./scripts/node-init.js "$address" "$public_ip" "$storage")
+	local response=$(ADDRESS="$ADDRESS" \
+		PUBLIC_IP="$PUBLIC_IP" \
+		STORAGE="$STORAGE" \
+		VERSION="$VERSION" \
+		EMAIL="$EMAIL" \
+		"$BUN_PATH" ./scripts/node-init.js)
 	# Extract telemetry config from response and write to .env file
 	# NOTE: These envs are used in telegraf
 	add_env "INFLUXDB_URL" "$(echo "$response" | jq -r '.telemetry.url')"
 	add_env "INFLUXDB_TOKEN" "$(echo "$response" | jq -r '.telemetry.token')"
 	add_env "INFLUXDB_ORG" "$(echo "$response" | jq -r '.telemetry.org')"
 	add_env "INFLUXDB_BUCKET" "$(echo "$response" | jq -r '.telemetry.bucket')"
-	add_env "ADDRESS" "$address"
+	add_env "ADDRESS" "$ADDRESS"
 }
 
 register_node() {
@@ -400,6 +438,10 @@ ETH_MAINNET_NODE_PROVIDER_URL=$(get_node_provider_url "1" "Ethereum Mainnet" "et
 add_env "NODE_PROVIDER_URL" "$NODE_PROVIDER_URL"
 add_env "ETH_MAINNET_NODE_PROVIDER_URL" "$ETH_MAINNET_NODE_PROVIDER_URL"
 
+# Get user email
+EMAIL=$(get_user_email)
+update_config_json "email" "$EMAIL"
+
 PUBLIC_IP=$(get_public_ip)
 echo "Public IP: $PUBLIC_IP"
 PRIVATE_KEY=$(sudo cat $EVM_KEY_FILE | jq -r '.privateKey')
@@ -414,7 +456,7 @@ STORAGE_PATH_EXPORT="$STORAGE_PATH/export"
 add_env "STORAGE_PATH_EXPORT" "$STORAGE_PATH_EXPORT"
 
 move_existing_data
-node_init "$ADDRESS" "$PUBLIC_IP" "$STORAGE"
+node_init
 start_node "$PUBLIC_IP"
 
 # Get and return peer ID
@@ -427,5 +469,13 @@ register_node
 update_config_json "chainId" "$CHAIN_ID"
 update_config_json "nodeProviderWsUrl" "$NODE_PROVIDER_URL"
 update_config_json "ethMainnetNodeProviderWsUrl" "$ETH_MAINNET_NODE_PROVIDER_URL"
+
+echo ""
+echo "----------------------------------------"
+echo "Setup complete!"
+echo "If you encounter any issues or have questions, please reach out to us:"
+echo "Discord: https://discord.gg/zUpBGJ4uh5"
+echo "Telegram: https://t.me/webhashgroup"
+echo "----------------------------------------"
 
 cd ~
