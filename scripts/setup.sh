@@ -473,7 +473,7 @@ update_config_json "ethMainnetNodeProviderWsUrl" "$ETH_MAINNET_NODE_PROVIDER_URL
 echo ""
 echo "----------------------------------------"
 echo "Setup complete!"
-echo "If you encounter any issues or have questions, please reach out to us:"
+echo "Join our Discord and Telegram for the latest updates and quick support if you have any questions:"
 echo "Discord: https://discord.gg/zUpBGJ4uh5"
 echo "Telegram: https://t.me/webhashgroup"
 echo "----------------------------------------"
