@@ -421,7 +421,6 @@ clone_repo() {
 	echo "Cloning repository..."
 	sudo git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH &>/dev/null
 	cd "$REPO_PATH"
-	sudo git checkout feature/ens
 }
 
 clone_repo
