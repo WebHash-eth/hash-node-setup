@@ -4,9 +4,9 @@ import { z } from "zod";
 
 // Default configuration values
 const DEFAULT_NODE_REGISTRY_ADDRESS =
-  "0x49b3A52Db857BC3D16725b0Ec16f416cb341916b";
+  "0xA8841266B81b1ae704D3C3e569266fA71a2db491";
 const DEFAULT_CONTENT_REGISTRY_ADDRESS =
-  "0x183D99Ed54B29Bb10A5FB3AE101007d18f507202";
+  "0xF8A1d5399059D4C7938Ce1D8b1eb21D304f425F6";
 const DEFAULT_NETWORK = "baseSepolia";
 const DEFAULT_IPFS_HOST = "http://node:5001/api/v0";
 
@@ -38,9 +38,11 @@ export default z
         .refine(isAddress)
         .default(DEFAULT_CONTENT_REGISTRY_ADDRESS),
       NETWORK: z
-        .enum(["localhost", "base", "baseSepolia"])
+        .enum(["anvil", "localhost", "base", "baseSepolia"])
         .default(DEFAULT_NETWORK),
       IPFS_HOST: z.string().url().default(DEFAULT_IPFS_HOST),
+
+      ETH_MAINNET_CHAIN_WS_URL: z.string().url(),
     }),
   )
   .parse(process.env);

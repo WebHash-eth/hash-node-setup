@@ -1,13 +1,26 @@
 import os from "os";
 
-const address = process.argv[2];
-const publicIp = process.argv[3];
-const storage = process.argv[4];
+const address = process.env.ADDRESS;
+const publicIp = process.env.PUBLIC_IP;
+const storage = process.env.STORAGE;
+const version = process.env.VERSION;
+const email = process.env.EMAIL;
+const peerId = process.env.PEER_ID;
 
-if (!address || !publicIp || !storage) {
-  console.error(
-    "❌ Please provide address, publicIp as command-line arguments.",
-  );
+// Validate required environment variables
+if (!address || !publicIp || !storage || !version || !email || !peerId) {
+  console.error("❌ Missing required environment variables.");
+  const missing = [
+    !address && "ADDRESS",
+    !publicIp && "PUBLIC_IP",
+    !storage && "STORAGE",
+    !version && "VERSION",
+    !email && "EMAIL",
+    !peerId && "PEER_ID",
+  ]
+    .filter(Boolean)
+    .join(", ");
+  console.error(`Missing: ${missing}`);
   process.exit(1);
 }
 
@@ -17,11 +30,11 @@ const hardwareInfo = {
   platform: os.platform(),
   arch: os.arch(),
   cpu: os.cpus().map((cpu) => cpu.model),
-  memory: os.totalmem(), // Total memory only
+  memory: os.totalmem(),
   networkInterfaces: os.networkInterfaces(),
   uptime: os.uptime(),
-  timestamp: new Date().toISOString(), // Required for schema validation
-  storage, // Total disk space in KB
+  timestamp: new Date().toISOString(),
+  storage,
 };
 
 const isLocal = process.env.NODE_ENV === "local";
@@ -40,6 +53,9 @@ try {
       ...hardwareInfo,
       address,
       publicIp,
+      nodeVersion: version,
+      email,
+      peerId,
     }),
   });
 

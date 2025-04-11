@@ -28,6 +28,7 @@ services:
       NODE_ENV: production
       PRIVATE_KEY: ${PRIVATE_KEY}
       CHAIN_WS_URL: ${NODE_PROVIDER_URL}
+      ETH_MAINNET_CHAIN_WS_URL: ${ETH_MAINNET_NODE_PROVIDER_URL}
     depends_on:
       node:
         condition: service_healthy

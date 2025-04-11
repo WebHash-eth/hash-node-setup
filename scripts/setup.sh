@@ -13,6 +13,7 @@ REPO_PATH=/opt/webhash-node/repo
 NODE_DATA_DIR_NAME=.webhash-node-data
 CONFIG_FILE=/opt/webhash-node/config.json
 CHAIN_ID="84532" # base sepolia
+VERSION="0.2"
 
 # Function to handle errors
 trap 'echo "An error occurred. Exiting..." >&2' ERR
@@ -201,7 +202,7 @@ start_node() {
 	echo "Starting node with public IP: $public_ip..."
 
 	# Start the container with PRIVATE_KEY env var
-	PRIVATE_KEY=$PRIVATE_KEY NODE_PROVIDER_URL=$NODE_PROVIDER_URL sudo -E docker compose up -d --build
+	PRIVATE_KEY=$PRIVATE_KEY sudo -E docker compose up -d --build
 
 	# Wait for node to be ready
 	echo "Waiting for node container to be ready..."
@@ -281,53 +282,94 @@ update_config_json() {
 }
 
 get_node_provider_url() {
-	if [ -f "$CONFIG_FILE" ]; then
-		# '// empty' returns empty string if the value doesn't exists
-		existing_url=$(sudo jq -r '.nodeProviderWsUrl // empty' "$CONFIG_FILE" 2>/dev/null)
+	local target_chain_id=$1   # the expected chain ID (e.g., "84532", "1")
+	local target_chain_name=$2 # human readable name of the chain
+	local config_key=$3        # config key to use; will be used to read from config.json
+	local result_url=""        # the validated WebSocket URL
+
+	if [[ -f "$CONFIG_FILE" ]]; then
+		local existing_url=$(sudo jq -r --arg key "$config_key" '.[$key] // empty' "$CONFIG_FILE" 2>/dev/null)
 		if [[ -n "$existing_url" && "$existing_url" == wss://* ]]; then
-			echo "✓ Using existing Node Provider URL from config: $existing_url"
-			NODE_PROVIDER_URL="$existing_url"
-			return 0
+			# Validate the chain ID of the existing URL
+			local existing_chain_id=$("$BUN_PATH" "./bin/get-chain-id.js" "$existing_url" 2>/dev/null || echo "error")
+			# if the chain ID is correct, use the existing URL
+			if [[ "$existing_chain_id" == "$target_chain_id" ]]; then
+				echo "✓ Using existing $target_chain_name Node Provider URL from config: $existing_url" >&2
+				result_url="$existing_url"
+			else
+				echo "ℹ️ Existing URL in config for '$config_key' has incorrect chain ID (expected $target_chain_id, got $existing_chain_id). Prompting for new URL." >&2
+			fi
 		fi
 	fi
 
-	local chain_name=""
+	# If no valid URL found yet, prompt the user
+	if [[ -z "$result_url" ]]; then
+		while true; do
+			echo "Please enter your $target_chain_name node provider WebSocket URL (wss://...):" >&2
+			read -r input_url
 
-	case "$CHAIN_ID" in
-	"84532")
-		chain_name="Base Sepolia"
-		;;
-	*) ;;
-	esac
+			if [[ "$input_url" == wss://* ]]; then
 
-	while true; do
-		echo "Please enter your $chain_name node provider WebSocket URL (wss://...):"
-		read -r NODE_PROVIDER_URL
+				local remote_chain_id=$("$BUN_PATH" "./bin/get-chain-id.js" "$input_url" 2>/dev/null || echo "error")
 
-		if [[ "$NODE_PROVIDER_URL" == wss://* ]]; then
-			local remote_chain_id=$("$BUN_PATH" "./bin/get-chain-id.js" "$NODE_PROVIDER_URL" 2>/dev/null || echo "error")
+				if [[ "$remote_chain_id" == "error" ]]; then
+					echo "Error: Failed to get chain ID from the node provider URL." >&2
+					echo "       Please check the URL, ensure the node is running, and verify network connectivity." >&2
+					continue
+				fi
 
-			if [[ "$remote_chain_id" == "error" ]]; then
-				echo "Error: Failed to get chain ID from the node provider URL."
-				echo "       Please check the URL, ensure the node is running, and verify network connectivity."
-				continue
+				if [[ "$remote_chain_id" != "$target_chain_id" ]]; then
+					echo "Error: Chain ID mismatch for $target_chain_name network." >&2
+					echo "       Expected chain ID: $target_chain_id" >&2
+					echo "       Got chain ID from URL: $remote_chain_id" >&2
+					echo "Please provide a node provider URL for the correct network." >&2
+					continue
+				fi
+
+				echo "✓ Chain ID verified successfully for $target_chain_name ($remote_chain_id)." >&2
+				result_url="$input_url"
+				break
+			else
+				echo "Invalid format. URL must start with wss://" >&2
 			fi
+		done
+	fi
+	echo "$result_url"
+}
 
-			if [[ "$remote_chain_id" != "$CHAIN_ID" ]]; then
-				echo "Error: Chain ID mismatch for $chain_name network."
-				echo "       Expected chain ID: $CHAIN_ID"
-				echo "       Got chain ID from URL: $remote_chain_id"
-				echo "Please provide a node provider URL for the correct network."
-				continue
-			fi
+get_user_email() {
+	local config_key="email"
+	local result_email=""
 
-			echo "✓ Chain ID verified successfully ($remote_chain_id)."
-			echo "✓ Node provider URL set for $chain_name."
-			break
-		else
-			echo "Invalid format. URL must start with wss://"
+	# Check if email exists in config
+	if [[ -f "$CONFIG_FILE" ]]; then
+		local existing_email=$(sudo jq -r --arg key "$config_key" '.[$key] // empty' "$CONFIG_FILE" 2>/dev/null)
+		# Basic validation: check if it contains '@'
+		if [[ -n "$existing_email" && "$existing_email" == *"@"* ]]; then
+			echo "✓ Using existing email from config: $existing_email" >&2
+			result_email="$existing_email"
 		fi
-	done
+	fi
+
+	# If no valid email found in config, prompt the user
+	if [[ -z "$result_email" ]]; then
+		while true; do
+			echo "Please enter your email address:" >&2
+			read -r input_email
+
+			# Basic validation: check if it contains '@'
+			if [[ "$input_email" == *"@"* ]]; then
+				echo "✓ Email format looks valid." >&2
+				result_email="$input_email"
+				# Save the email to config
+				update_config_json "$config_key" "$result_email"
+				break
+			else
+				echo "Invalid email format. Please ensure it contains '@'." >&2
+			fi
+		done
+	fi
+	echo "$result_email"
 }
 
 ensure_jq() {
@@ -338,26 +380,30 @@ ensure_jq() {
 }
 
 node_init() {
-	local address=$1
-	local public_ip=$2
-	local storage=$3
 	# Capture the JSON response from node-init.js
-	local response=$("$BUN_PATH" ./scripts/node-init.js "$address" "$public_ip" "$storage")
+	local response=$(ADDRESS="$ADDRESS" \
+		PUBLIC_IP="$PUBLIC_IP" \
+		STORAGE="$STORAGE" \
+		VERSION="$VERSION" \
+		EMAIL="$EMAIL" \
+		PEER_ID="$PEER_ID" \
+		"$BUN_PATH" ./scripts/node-init.js)
 	# Extract telemetry config from response and write to .env file
 	# NOTE: These envs are used in telegraf
 	add_env "INFLUXDB_URL" "$(echo "$response" | jq -r '.telemetry.url')"
 	add_env "INFLUXDB_TOKEN" "$(echo "$response" | jq -r '.telemetry.token')"
 	add_env "INFLUXDB_ORG" "$(echo "$response" | jq -r '.telemetry.org')"
 	add_env "INFLUXDB_BUCKET" "$(echo "$response" | jq -r '.telemetry.bucket')"
-	add_env "ADDRESS" "$address"
+	add_env "ADDRESS" "$ADDRESS"
 }
 
 register_node() {
 	echo "Registering node with peer ID: $PEER_ID"
-	PRIVATE_KEY="$1" \
-		PUBLIC_IP="$2" \
-		PEER_ID="$3" \
-		STORAGE="$4" \
+	# Use global variables directly
+	PRIVATE_KEY="$PRIVATE_KEY" \
+		PEER_ID="$PEER_ID" \
+		STORAGE="$STORAGE" \
+		CHAIN_ID="$CHAIN_ID" \
 		"$BUN_PATH" ./bin/register-node.js
 	echo "Node registered successfully with peer ID: $PEER_ID"
 }
@@ -375,6 +421,7 @@ clone_repo() {
 	echo "Cloning repository..."
 	sudo git clone https://github.com/WebHash-eth/hash-node-setup.git $REPO_PATH &>/dev/null
 	cd "$REPO_PATH"
+	sudo git checkout feature/ens
 }
 
 clone_repo
@@ -383,7 +430,18 @@ install_docker
 install_bun
 ensure_jq
 import_evm_key
-get_node_provider_url
+
+# Get Base Sepolia Node Provider URL (Primary)
+
+NODE_PROVIDER_URL=$(get_node_provider_url "$CHAIN_ID" "Base Sepolia" "nodeProviderWsUrl")
+ETH_MAINNET_NODE_PROVIDER_URL=$(get_node_provider_url "1" "Ethereum Mainnet" "ethMainnetNodeProviderWsUrl")
+
+add_env "NODE_PROVIDER_URL" "$NODE_PROVIDER_URL"
+add_env "ETH_MAINNET_NODE_PROVIDER_URL" "$ETH_MAINNET_NODE_PROVIDER_URL"
+
+# Get user email
+EMAIL=$(get_user_email)
+update_config_json "email" "$EMAIL"
 
 PUBLIC_IP=$(get_public_ip)
 echo "Public IP: $PUBLIC_IP"
@@ -399,15 +457,27 @@ STORAGE_PATH_EXPORT="$STORAGE_PATH/export"
 add_env "STORAGE_PATH_EXPORT" "$STORAGE_PATH_EXPORT"
 
 move_existing_data
-node_init "$ADDRESS" "$PUBLIC_IP" "$STORAGE"
 start_node "$PUBLIC_IP"
 
 # Get and return peer ID
 PEER_ID=$(sudo docker exec node ipfs id -f='<id>')
 echo "Node started with peer ID: $PEER_ID"
 
-register_node "$PRIVATE_KEY" "$PUBLIC_IP" "$PEER_ID" "$STORAGE"
+node_init
+register_node
 
+# Update config only with the primary node provider URL (Base Sepolia)
 update_config_json "chainId" "$CHAIN_ID"
 update_config_json "nodeProviderWsUrl" "$NODE_PROVIDER_URL"
+update_config_json "ethMainnetNodeProviderWsUrl" "$ETH_MAINNET_NODE_PROVIDER_URL"
+update_config_json "storagePath" "$STORAGE_PATH"
+
+echo ""
+echo "----------------------------------------"
+echo "Setup complete!"
+echo "Join our Discord and Telegram for the latest updates and quick support if you have any questions:"
+echo "Discord: https://discord.gg/zUpBGJ4uh5"
+echo "Telegram: https://t.me/webhashgroup"
+echo "----------------------------------------"
+
 cd ~
