@@ -381,13 +381,14 @@ ensure_jq() {
 
 node_init() {
 	# Capture the JSON response from node-init.js
-	local response=$(ADDRESS="$ADDRESS" \
-		PUBLIC_IP="$PUBLIC_IP" \
-		STORAGE="$STORAGE" \
-		VERSION="$VERSION" \
-		EMAIL="$EMAIL" \
-		PEER_ID="$PEER_ID" \
-		"$BUN_PATH" ./scripts/node-init.js)
+	local response=$(
+		ADDRESS="$ADDRESS" \
+			PUBLIC_IP="$PUBLIC_IP" \
+			STORAGE="$STORAGE" \
+			VERSION="$VERSION" \
+			EMAIL="$EMAIL"
+		"$BUN_PATH" ./scripts/node-init.js
+	)
 	# Extract telemetry config from response and write to .env file
 	# NOTE: These envs are used in telegraf
 	add_env "INFLUXDB_URL" "$(echo "$response" | jq -r '.telemetry.url')"
