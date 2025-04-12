@@ -456,13 +456,13 @@ STORAGE_PATH_EXPORT="$STORAGE_PATH/export"
 add_env "STORAGE_PATH_EXPORT" "$STORAGE_PATH_EXPORT"
 
 move_existing_data
+node_init
 start_node "$PUBLIC_IP"
 
 # Get and return peer ID
 PEER_ID=$(sudo docker exec node ipfs id -f='<id>')
 echo "Node started with peer ID: $PEER_ID"
 
-node_init
 register_node
 
 # Update config only with the primary node provider URL (Base Sepolia)

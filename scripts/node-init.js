@@ -5,10 +5,9 @@ const publicIp = process.env.PUBLIC_IP;
 const storage = process.env.STORAGE;
 const version = process.env.VERSION;
 const email = process.env.EMAIL;
-const peerId = process.env.PEER_ID;
 
 // Validate required environment variables
-if (!address || !publicIp || !storage || !version || !email || !peerId) {
+if (!address || !publicIp || !storage || !version || !email) {
   console.error("❌ Missing required environment variables.");
   const missing = [
     !address && "ADDRESS",
@@ -16,7 +15,6 @@ if (!address || !publicIp || !storage || !version || !email || !peerId) {
     !storage && "STORAGE",
     !version && "VERSION",
     !email && "EMAIL",
-    !peerId && "PEER_ID",
   ]
     .filter(Boolean)
     .join(", ");
@@ -55,7 +53,6 @@ try {
       publicIp,
       nodeVersion: version,
       email,
-      peerId,
     }),
   });
 
