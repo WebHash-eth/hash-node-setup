@@ -386,8 +386,8 @@ node_init() {
 			PUBLIC_IP="$PUBLIC_IP" \
 			STORAGE="$STORAGE" \
 			VERSION="$VERSION" \
-			EMAIL="$EMAIL"
-		"$BUN_PATH" ./scripts/node-init.js
+			EMAIL="$EMAIL" \
+			"$BUN_PATH" ./scripts/node-init.js
 	)
 	# Extract telemetry config from response and write to .env file
 	# NOTE: These envs are used in telegraf
