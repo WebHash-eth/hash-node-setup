@@ -13,7 +13,7 @@ REPO_PATH=/opt/webhash-node/repo
 NODE_DATA_DIR_NAME=.webhash-node-data
 CONFIG_FILE=/opt/webhash-node/config.json
 CHAIN_ID="84532" # base sepolia
-VERSION="0.2"
+VERSION="0.2.1"
 
 # Function to handle errors
 trap 'echo "An error occurred. Exiting..." >&2' ERR
