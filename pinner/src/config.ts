@@ -4,9 +4,9 @@ import { z } from "zod";
 
 // Default configuration values
 const DEFAULT_NODE_REGISTRY_ADDRESS =
-  "0xA8841266B81b1ae704D3C3e569266fA71a2db491";
+  "0x85216f8b1b7bf3C0fF947dBb1a5b7c38C67d2437";
 const DEFAULT_CONTENT_REGISTRY_ADDRESS =
-  "0xF8A1d5399059D4C7938Ce1D8b1eb21D304f425F6";
+  "0x6f7a486515c240893b7dDaa8B74d8c6601695BbB";
 const DEFAULT_NETWORK = "baseSepolia";
 const DEFAULT_IPFS_HOST = "http://node:5001/api/v0";
 
