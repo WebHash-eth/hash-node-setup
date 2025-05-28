@@ -12,7 +12,7 @@ function shouldExist(key: string) {
 }
 
 const config = {
-  NODE_REGISTRY_CONTRACT_ADDRESS: "0xA8841266B81b1ae704D3C3e569266fA71a2db491",
+  NODE_REGISTRY_CONTRACT_ADDRESS: "0x85216f8b1b7bf3C0fF947dBb1a5b7c38C67d2437",
   NETWORK: process.env.CHAIN_ID === "8453" ? "base" : "baseSepolia",
   PRIVATE_KEY: shouldExist("PRIVATE_KEY"),
   PEER_ID: shouldExist("PEER_ID"),
