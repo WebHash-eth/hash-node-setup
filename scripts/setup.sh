@@ -213,7 +213,13 @@ start_node() {
 
 	# Configure node
 	echo "Configuring node..."
-	sudo docker exec node ipfs config --json Addresses.Swarm "[\"/ip4/0.0.0.0/tcp/4001\", \"/ip4/0.0.0.0/udp/4001/quic\", \"/ip4/$public_ip/tcp/4001\", \"/ip4/$public_ip/udp/4001/quic\"]"
+	sudo docker exec node ipfs config --json Addresses.Announce '[
+	  "/ip4/'"$public_ip"'/tcp/4001",
+	  "/ip4/'"$public_ip"'/udp/4001/quic-v1",
+	  "/ip4/'"$public_ip"'/udp/4001/quic-v1/webtransport"
+	]'
+	sudo docker exec node ipfs config --json Reprovider.Strategy '"pinned"'
+	sudo docker exec node ipfs config --json Routing.AcceleratedDHTClient true
 
 	# Restart to apply changes
 	sudo docker restart node >/dev/null
