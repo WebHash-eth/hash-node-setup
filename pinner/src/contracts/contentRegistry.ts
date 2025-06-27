@@ -93,7 +93,7 @@ export class ContentRegistryContract {
       abi: this._abi,
       eventName: eventName,
       onLogs: callback,
-      onError: async (err) => {
+      onError: (err) => {
         this._logger.error({
           msg: "Error watching contract event",
           meta: {
@@ -101,9 +101,15 @@ export class ContentRegistryContract {
           },
           err,
         });
-        // check if we can fetch the block number
-        const block = await this._publicClient.getBlockNumber();
-        this._logger.info(`Successfully Fetched block ${block}`);
+
+        this._publicClient
+          .getBlockNumber()
+          .then((block) => {
+            this._logger.info(`Successfully Fetched block ${block}`);
+          })
+          .catch((err) => {
+            this._logger.error({ msg: "Error fetching block number", err });
+          });
       },
     });
     return unwatch;
