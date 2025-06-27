@@ -10,8 +10,13 @@ import {
   WatchContractEventOnLogsFn,
 } from "viem";
 import contentRegistryAbi from "./abi/contentRegistry.abi.js";
+import defaultLogger from "../logger.js";
 
 export class ContentRegistryContract {
+  private _logger = defaultLogger.child({
+    context: ContentRegistryContract.name,
+  });
+
   private _publicClient: PublicClient;
   private _walletClient: WalletClient<Transport, Chain, Account>;
   private _contractAddress: Address;
@@ -88,6 +93,18 @@ export class ContentRegistryContract {
       abi: this._abi,
       eventName: eventName,
       onLogs: callback,
+      onError: async (err) => {
+        this._logger.error({
+          msg: "Error watching contract event",
+          meta: {
+            eventName,
+          },
+          err,
+        });
+        // check if we can fetch the block number
+        const block = await this._publicClient.getBlockNumber();
+        this._logger.info(`Successfully Fetched block ${block}`);
+      },
     });
     return unwatch;
   }
