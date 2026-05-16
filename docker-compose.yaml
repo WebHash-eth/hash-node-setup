@@ -1,7 +1,7 @@
 services:
   node:
     container_name: node
-    image: ipfs/kubo:v0.34.1
+    image: ipfs/kubo:v0.41.0
     privileged: true
     ports:
       - "4001:4001" # IPFS swarm (TCP)
