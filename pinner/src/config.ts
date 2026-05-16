@@ -41,8 +41,6 @@ export default z
         .enum(["anvil", "localhost", "base", "baseSepolia"])
         .default(DEFAULT_NETWORK),
       IPFS_HOST: z.string().url().default(DEFAULT_IPFS_HOST),
-
-      ETH_MAINNET_CHAIN_WS_URL: z.string().url(),
     }),
   )
   .parse(process.env);

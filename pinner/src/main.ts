@@ -13,7 +13,6 @@ import { privateKeyToAccount } from "viem/accounts";
 import * as chains from "viem/chains";
 import config from "./config.js";
 import { ContentRegistryContract } from "./contracts/contentRegistry.js";
-import { onEnsContentHashChanged } from "./ens.js";
 import { pinContentToIpfs } from "./ipfs.js";
 import logger from "./logger.js";
 import { cidProcessingState, withErrorLogger } from "./utils.js";
@@ -92,15 +91,10 @@ async function registerContent(
 async function main() {
   logger.info("Starting pinner service...");
 
-  const ensCallback = withErrorLogger((uploader: Address, cid: Hash) => {
-    return registerContent(uploader, cid, true);
-  });
-
   logger.info(
     `Watching ContentRegistered event with url: ${config.CHAIN_WS_URL.slice(0, 20)}...`,
   );
   contentContract.onContentRegistered(withErrorLogger(registerContent));
-  onEnsContentHashChanged(ensCallback);
 }
 
 main();
