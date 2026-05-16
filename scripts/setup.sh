@@ -440,10 +440,8 @@ import_evm_key
 # Get Base Sepolia Node Provider URL (Primary)
 
 NODE_PROVIDER_URL=$(get_node_provider_url "$CHAIN_ID" "Base Sepolia" "nodeProviderWsUrl")
-ETH_MAINNET_NODE_PROVIDER_URL=$(get_node_provider_url "1" "Ethereum Mainnet" "ethMainnetNodeProviderWsUrl")
 
 add_env "NODE_PROVIDER_URL" "$NODE_PROVIDER_URL"
-add_env "ETH_MAINNET_NODE_PROVIDER_URL" "$ETH_MAINNET_NODE_PROVIDER_URL"
 
 # Get user email
 EMAIL=$(get_user_email)
@@ -475,7 +473,6 @@ register_node
 # Update config only with the primary node provider URL (Base Sepolia)
 update_config_json "chainId" "$CHAIN_ID"
 update_config_json "nodeProviderWsUrl" "$NODE_PROVIDER_URL"
-update_config_json "ethMainnetNodeProviderWsUrl" "$ETH_MAINNET_NODE_PROVIDER_URL"
 update_config_json "storagePath" "$STORAGE_PATH"
 
 echo ""

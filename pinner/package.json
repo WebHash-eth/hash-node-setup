@@ -22,7 +22,6 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@ensdomains/content-hash": "^3.0.0",
     "dotenv-flow": "^4.1.0",
     "multiformats": "^13.3.2",
     "p-retry": "^6.2.1",
